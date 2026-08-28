@@ -7,10 +7,26 @@ import { useState, useRef, useEffect } from 'react';
 import { Message } from './types';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
-import { Sparkles, Globe, Cpu, ShieldCheck, Terminal, HelpCircle } from 'lucide-react';
+import { Sparkles, Globe, Cpu, ShieldCheck, Terminal, HelpCircle, RotateCcw } from 'lucide-react';
+
+const STORAGE_KEY = 'larua_chat_history';
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load chat history from localStorage', e);
+    }
+    return [];
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -22,6 +38,27 @@ export default function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isProcessing]);
+
+  // Persist messages to localStorage on updates
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    } catch (e) {
+      console.error('Failed to save chat history to localStorage', e);
+    }
+  }, [messages]);
+
+  const handleClearHistory = () => {
+    if (messages.length === 0) return;
+    if (window.confirm('Clear conversation history?')) {
+      setMessages([]);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.error('Failed to clear localStorage', e);
+      }
+    }
+  };
 
   const handleSendMessage = async (content: string, attachments?: {mimeType: string, data: string}[]) => {
     const userMessage: Message = {
@@ -172,7 +209,18 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-slate-300">
+          {messages.length > 0 && (
+            <button
+              onClick={handleClearHistory}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 rounded-lg transition-colors cursor-pointer text-xs font-medium"
+              title="Start a new conversation"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>New Chat</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-slate-300">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
             <span className="text-[11px] font-medium">Ready</span>
           </div>

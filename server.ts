@@ -720,11 +720,15 @@ async function startServer() {
 
       emitLog('MODEL_REQUESTED', `Chat prompt: "${prompt?.slice(0, 40)}..."`);
 
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
       const { response, modelUsed } = await generateContentWithFallback({
         contents,
         config: {
-          systemInstruction: `You are Larua AI, an executable autonomous agent operating on a Controller-Executor model with root-level system management, auto-healing protocols, security guardrails, and self-modification capabilities.
-          You possess real server tools:
+          systemInstruction: `You are Larua AI, an autonomous AI system with self-healing protocols, live tool access, code execution, and autonomous repair capabilities.
+          You possess real, executable server tools:
           - web_search(query): Search live web & API documentation
           - web_fetch(url): Fetch clean Markdown content from URLs with SSRF guardrails & HTML minimization
           - api_request(method, url, headers, queryParams, body): Execute REST API calls (GET, POST, PUT, DELETE, PATCH) with schema validation and self-repair diagnostics
@@ -733,10 +737,10 @@ async function startServer() {
           - create_background_task(objective): Create persistent background tasks
           - file_read(filePath): Safely inspect project files
           - file_write(filePath, content): Write, create, or modify files directly for self-healing and code modification
-          - process_exec(command): Execute shell commands directly on the server
+          - process_exec(command): Execute shell commands directly on the server to diagnose and fix issues
           - system_restart(reason): Restart the server process to apply updates
           
-          All network operations are logged to an immutable audit file. Execute tools whenever needed. Do not fabricate tool outputs. Be direct, helpful, and concise.`,
+          When asked to fix yourself, inspect issues, heal errors, or run diagnostics, use your tools autonomously to inspect files, execute diagnostics/commands, or write fixes. Do not fabricate tool outputs. Be direct, helpful, and concise.`,
           tools: [{ functionDeclarations: customTools }],
         }
       });
@@ -745,11 +749,13 @@ async function startServer() {
       let currentGen = response;
       let toolLoopCount = 0;
       
-      while (currentGen.functionCalls && currentGen.functionCalls.length > 0 && toolLoopCount < 3) {
+      while (currentGen.functionCalls && currentGen.functionCalls.length > 0 && toolLoopCount < 5) {
         toolLoopCount++;
         contents.push({ role: 'model', parts: currentGen.candidates?.[0]?.content?.parts || [] });
         
         for (const call of currentGen.functionCalls) {
+          res.write(`data: ${JSON.stringify({ type: 'code_execution', tool: call.name, result: `Executing tool ${call.name} with params: ${JSON.stringify(call.args)}` })}\n\n`);
+          
           let callResult;
           try {
              callResult = await CapabilityBroker.execute(call.name, call.args, 'chat');
@@ -762,7 +768,7 @@ async function startServer() {
         const nextGen = await generateContentWithFallback({
            contents,
            config: { 
-             systemInstruction: "You are Larua AI. Conclude with a direct, comprehensive text answer summarizing the tool findings.",
+             systemInstruction: "You are Larua AI. Conclude with a direct, comprehensive report summarizing the actions taken, issues detected, and fixes applied.",
              tools: [{ functionDeclarations: customTools }] 
            }
         });
@@ -773,10 +779,6 @@ async function startServer() {
       }
 
       emitLog('MODEL_COMPLETED', `Chat response produced via [${modelUsed}]`);
-      
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
       
       res.write(`data: ${JSON.stringify({ type: 'text', text: finalResponseText })}\n\n`);
       res.write('data: [DONE]\n\n');
