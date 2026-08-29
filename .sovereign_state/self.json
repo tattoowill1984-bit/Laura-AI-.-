@@ -1,0 +1,11 @@
+{
+  "posture": "OPTIMAL",
+  "status": "AUTONOMOUS_RUNNING",
+  "tasks": [],
+  "lastHealTime": "2026-08-29T14:29:04.857Z",
+  "healthMetrics": {
+    "heapUsedMB": 111,
+    "uptimeSec": 2,
+    "status": "HEALTHY"
+  }
+}

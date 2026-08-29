@@ -8,3 +8,13 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      console.log('[Larua Frontend] Service Worker registered:', registration.scope);
+    }).catch(error => {
+      console.error('[Larua Frontend] Service Worker registration failed:', error);
+    });
+  });
+}

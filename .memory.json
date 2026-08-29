@@ -683,299 +683,6 @@
   },
   "logs": [
     {
-      "type": "TASK_STARTED",
-      "message": "Started background execution: [PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Sweep",
-      "data": {
-        "id": "proactive_1787925310351",
-        "objective": "[PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Sweep",
-        "status": "COMPLETED",
-        "priority": 2,
-        "createdAt": 1787925310351,
-        "executionHistory": [
-          {
-            "tool": "system_diagnostics",
-            "modelUsed": "gemini-3.1-flash-lite-preview",
-            "result": {
-              "status": "HEALTHY",
-              "uptimeSeconds": 6,
-              "memoryUsageMB": {
-                "rss": "281.6",
-                "heapUsed": "117.7",
-                "heapTotal": "149.2"
-              },
-              "platform": "linux",
-              "nodeVersion": "v22.23.2",
-              "activeTasks": 1,
-              "totalTasks": 8,
-              "policy": "AUTONOMY_ACTIVE"
-            },
-            "timestamp": 1787925310979
-          },
-          {
-            "tool": "application_health_check",
-            "modelUsed": "gemini-3.1-flash-lite-preview",
-            "result": {
-              "status": "ONLINE",
-              "toolsAvailable": [
-                "web_search",
-                "web_fetch",
-                "api_request",
-                "system_diagnostics",
-                "create_background_task",
-                "application_health_check",
-                "file_read",
-                "file_write",
-                "process_exec",
-                "system_restart"
-              ],
-              "taskStats": {
-                "completed": 4,
-                "failed": 3,
-                "pending": 0
-              },
-              "policy": "AUTONOMY_ACTIVE",
-              "selfHealActive": true,
-              "rootCapabilities": {
-                "rawFileWrite": true,
-                "processExec": true,
-                "processRestart": true
-              }
-            },
-            "timestamp": 1787925311795
-          }
-        ],
-        "result": "### Proactive Audit Report: System Diagnostics & Memory Telemetry\n\n**Audit Summary:**\nThe system performed a comprehensive diagnostic sweep of the Larua AI Autonomous Task Engine. The environment is stable, and all core autonomous capabilities are verified functional.\n\n**Technical Telemetry:**\n*   **System Status:** `HEALTHY` (Online)\n*   **Platform:** Linux (Node v22.23.2)\n*   **Memory Utilization:** \n    *   **RSS:** 281.6 MB\n    *   **Heap Used:** 117.7 MB / 149.2 MB (Total Heap)\n*   **Uptime:** 6 seconds (Process initialized recently)\n*   **Task History:** 8 total tasks (4 Completed, 3 Failed, 1 Active)\n\n**Health Verification:**\n*   **Capability Audit:** `process_exec`, `file_write`, and `system_restart` protocols are active.\n*   **Self-Healing:** Enabled and verified.\n*   **Operational Policy:** `AUTONOMY_ACTIVE` (Standard operational mode).\n\n**Conclusion:**\nNo anomalies detected. The system telemetry confirms optimal resource allocation and tool availability for ongoing operations. No corrective actions are required at this time."
-      },
-      "timestamp": 1787925310353
-    },
-    {
-      "type": "TOOL_REQUESTED",
-      "message": "Tool requested: system_diagnostics",
-      "data": {},
-      "timestamp": 1787925310978
-    },
-    {
-      "type": "TOOL_EXECUTED",
-      "message": "Tool succeeded: system_diagnostics",
-      "data": {
-        "tool": "system_diagnostics"
-      },
-      "timestamp": 1787925310979
-    },
-    {
-      "type": "TOOL_REQUESTED",
-      "message": "Tool requested: application_health_check",
-      "data": {},
-      "timestamp": 1787925311794
-    },
-    {
-      "type": "TOOL_EXECUTED",
-      "message": "Tool succeeded: application_health_check",
-      "data": {
-        "tool": "application_health_check"
-      },
-      "timestamp": 1787925311795
-    },
-    {
-      "type": "MODEL_REQUESTED",
-      "message": "Chat prompt: \"Execute an api_request to https://api.gi...\"",
-      "timestamp": 1787925312675
-    },
-    {
-      "type": "TASK_COMPLETED",
-      "message": "Task finished successfully: [PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Sweep",
-      "data": {
-        "id": "proactive_1787925310351",
-        "modelUsed": "gemini-3.1-flash-lite-preview"
-      },
-      "timestamp": 1787925314978
-    },
-    {
-      "type": "TOOL_REQUESTED",
-      "message": "Tool requested: api_request",
-      "data": {
-        "url": "https://api.github.com/zen",
-        "method": "GET",
-        "headers": {
-          "User-Agent": "LaruaAI-Agent"
-        }
-      },
-      "timestamp": 1787925315148
-    },
-    {
-      "type": "TOOL_EXECUTED",
-      "message": "Tool succeeded: api_request",
-      "data": {
-        "tool": "api_request"
-      },
-      "timestamp": 1787925315270
-    },
-    {
-      "type": "MODEL_COMPLETED",
-      "message": "Chat response produced via [gemini-3.1-flash-lite-preview]",
-      "timestamp": 1787925316052
-    },
-    {
-      "type": "PROACTIVE_PULSE",
-      "message": "Proactive Agent initiated mission: [PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Sweep",
-      "data": {
-        "id": "proactive_1787925330194",
-        "objective": "[PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Sweep",
-        "status": "COMPLETED",
-        "priority": 2,
-        "createdAt": 1787925330194,
-        "executionHistory": [
-          {
-            "tool": "system_diagnostics",
-            "modelUsed": "gemini-3.1-flash-lite-preview",
-            "result": {
-              "status": "HEALTHY",
-              "uptimeSeconds": 6,
-              "memoryUsageMB": {
-                "rss": "296.9",
-                "heapUsed": "133.6",
-                "heapTotal": "163.1"
-              },
-              "platform": "linux",
-              "nodeVersion": "v22.23.2",
-              "activeTasks": 1,
-              "totalTasks": 9,
-              "policy": "AUTONOMY_ACTIVE"
-            },
-            "timestamp": 1787925331013
-          },
-          {
-            "tool": "application_health_check",
-            "modelUsed": "gemini-3.1-flash-lite-preview",
-            "result": {
-              "status": "ONLINE",
-              "toolsAvailable": [
-                "web_search",
-                "web_fetch",
-                "api_request",
-                "system_diagnostics",
-                "create_background_task",
-                "application_health_check",
-                "file_read",
-                "file_write",
-                "process_exec",
-                "system_restart"
-              ],
-              "taskStats": {
-                "completed": 5,
-                "failed": 3,
-                "pending": 0
-              },
-              "policy": "AUTONOMY_ACTIVE",
-              "selfHealActive": true,
-              "rootCapabilities": {
-                "rawFileWrite": true,
-                "processExec": true,
-                "processRestart": true
-              }
-            },
-            "timestamp": 1787925335123
-          }
-        ],
-        "result": "### [PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Report\n\n**Status:** HEALTHY\n**Timestamp:** [Internal Audit Log Entry]\n\n#### 1. System Telemetry\n*   **Platform:** Linux\n*   **Node.js Version:** v22.23.2\n*   **System Uptime:** 6 Seconds\n*   **Memory Usage:**\n    *   **Heap Used:** 133.6 MB\n    *   **Heap Total:** 163.1 MB\n    *   **RSS:** 296.9 MB\n\n#### 2. Application Health & Capability Audit\n*   **Operational State:** Online, Autonomous Policy Active.\n*   **Self-Healing:** Enabled and active.\n*   **Capabilities:** Verified root-level execution access for `processExec`, `fileWrite`, and `systemRestart`.\n*   **Task Performance:** 5 successful operations, 3 previous failures cleared; system stability remains within nominal parameters.\n\n**Conclusion:** The environment is fully operational with no anomalies detected in resource allocation or service integrity. All autonomous tool sets are verified and ready for task execution."
-      },
-      "timestamp": 1787925330194
-    },
-    {
-      "type": "TASK_STARTED",
-      "message": "Started background execution: [PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Sweep",
-      "data": {
-        "id": "proactive_1787925330194",
-        "objective": "[PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Sweep",
-        "status": "COMPLETED",
-        "priority": 2,
-        "createdAt": 1787925330194,
-        "executionHistory": [
-          {
-            "tool": "system_diagnostics",
-            "modelUsed": "gemini-3.1-flash-lite-preview",
-            "result": {
-              "status": "HEALTHY",
-              "uptimeSeconds": 6,
-              "memoryUsageMB": {
-                "rss": "296.9",
-                "heapUsed": "133.6",
-                "heapTotal": "163.1"
-              },
-              "platform": "linux",
-              "nodeVersion": "v22.23.2",
-              "activeTasks": 1,
-              "totalTasks": 9,
-              "policy": "AUTONOMY_ACTIVE"
-            },
-            "timestamp": 1787925331013
-          },
-          {
-            "tool": "application_health_check",
-            "modelUsed": "gemini-3.1-flash-lite-preview",
-            "result": {
-              "status": "ONLINE",
-              "toolsAvailable": [
-                "web_search",
-                "web_fetch",
-                "api_request",
-                "system_diagnostics",
-                "create_background_task",
-                "application_health_check",
-                "file_read",
-                "file_write",
-                "process_exec",
-                "system_restart"
-              ],
-              "taskStats": {
-                "completed": 5,
-                "failed": 3,
-                "pending": 0
-              },
-              "policy": "AUTONOMY_ACTIVE",
-              "selfHealActive": true,
-              "rootCapabilities": {
-                "rawFileWrite": true,
-                "processExec": true,
-                "processRestart": true
-              }
-            },
-            "timestamp": 1787925335123
-          }
-        ],
-        "result": "### [PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Report\n\n**Status:** HEALTHY\n**Timestamp:** [Internal Audit Log Entry]\n\n#### 1. System Telemetry\n*   **Platform:** Linux\n*   **Node.js Version:** v22.23.2\n*   **System Uptime:** 6 Seconds\n*   **Memory Usage:**\n    *   **Heap Used:** 133.6 MB\n    *   **Heap Total:** 163.1 MB\n    *   **RSS:** 296.9 MB\n\n#### 2. Application Health & Capability Audit\n*   **Operational State:** Online, Autonomous Policy Active.\n*   **Self-Healing:** Enabled and active.\n*   **Capabilities:** Verified root-level execution access for `processExec`, `fileWrite`, and `systemRestart`.\n*   **Task Performance:** 5 successful operations, 3 previous failures cleared; system stability remains within nominal parameters.\n\n**Conclusion:** The environment is fully operational with no anomalies detected in resource allocation or service integrity. All autonomous tool sets are verified and ready for task execution."
-      },
-      "timestamp": 1787925330196
-    },
-    {
-      "type": "TOOL_REQUESTED",
-      "message": "Tool requested: system_diagnostics",
-      "data": {},
-      "timestamp": 1787925331012
-    },
-    {
-      "type": "TOOL_EXECUTED",
-      "message": "Tool succeeded: system_diagnostics",
-      "data": {
-        "tool": "system_diagnostics"
-      },
-      "timestamp": 1787925331013
-    },
-    {
-      "type": "TOOL_REQUESTED",
-      "message": "Tool requested: application_health_check",
-      "data": {},
-      "timestamp": 1787925335122
-    },
-    {
-      "type": "TOOL_EXECUTED",
-      "message": "Tool succeeded: application_health_check",
-      "data": {
-        "tool": "application_health_check"
-      },
-      "timestamp": 1787925335123
-    },
-    {
       "type": "TASK_COMPLETED",
       "message": "Task finished successfully: [PROACTIVE AUDIT] System Diagnostics & Memory Telemetry Sweep",
       "data": {
@@ -1992,6 +1699,95 @@
       "type": "MODEL_COMPLETED",
       "message": "Chat response produced via [gemini-3.1-flash-lite-preview]",
       "timestamp": 1787934462846
+    },
+    {
+      "type": "MODEL_REQUESTED",
+      "message": "Chat prompt: \"Is Gemini making changes to your system?...\"",
+      "timestamp": 1787938198649
+    },
+    {
+      "type": "MODEL_COMPLETED",
+      "message": "Chat response produced via [gemini-3.1-flash-lite-preview]",
+      "timestamp": 1787938200854
+    },
+    {
+      "type": "MODEL_REQUESTED",
+      "message": "Chat prompt: \"Hello...\"",
+      "timestamp": 1787939802188
+    },
+    {
+      "type": "MODEL_REQUESTED",
+      "message": "Chat prompt: \"Say hi...\"",
+      "timestamp": 1787939812013
+    },
+    {
+      "type": "MODEL_COMPLETED",
+      "message": "Chat response produced via [gemini-3.1-flash-lite]",
+      "timestamp": 1787939854030
+    },
+    {
+      "type": "MODEL_COMPLETED",
+      "message": "Chat response produced via [gemini-3.1-flash-lite]",
+      "timestamp": 1787939857381
+    },
+    {
+      "type": "MODEL_REQUESTED",
+      "message": "Chat prompt: \"Apparently. We were hitting the API quot...\"",
+      "timestamp": 1787941663112
+    },
+    {
+      "type": "TOOL_REQUESTED",
+      "message": "Tool requested: file_read",
+      "data": {
+        "filePath": "server.ts"
+      },
+      "timestamp": 1787941669217
+    },
+    {
+      "type": "TOOL_EXECUTED",
+      "message": "Tool succeeded: file_read",
+      "data": {
+        "tool": "file_read"
+      },
+      "timestamp": 1787941669218
+    },
+    {
+      "type": "TOOL_REQUESTED",
+      "message": "Tool requested: file_read",
+      "data": {
+        "filePath": ".laura_state/ledger.json"
+      },
+      "timestamp": 1787941705502
+    },
+    {
+      "type": "TOOL_FAILED",
+      "message": "Tool file_read error: File not found: .laura_state/ledger.json",
+      "timestamp": 1787941705503
+    },
+    {
+      "type": "MODEL_COMPLETED",
+      "message": "Chat response produced via [gemini-3.1-flash-lite]",
+      "timestamp": 1787941709871
+    },
+    {
+      "type": "MODEL_REQUESTED",
+      "message": "Chat prompt: \"Run a system diagnostic check...\"",
+      "timestamp": 1787941833747
+    },
+    {
+      "type": "MODEL_REQUESTED",
+      "message": "Chat prompt: \"Say hello in one word...\"",
+      "timestamp": 1787942076946
+    },
+    {
+      "type": "MODEL_REQUESTED",
+      "message": "Chat prompt: \"Say hello in 3 words...\"",
+      "timestamp": 1787942128199
+    },
+    {
+      "type": "MODEL_COMPLETED",
+      "message": "Chat response produced via [gemini-3.6-flash]",
+      "timestamp": 1787942133568
     }
   ],
   "policy": "AUTONOMY_ACTIVE"
