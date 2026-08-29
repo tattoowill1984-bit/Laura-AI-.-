@@ -3,38 +3,39 @@ import { Message } from '../types';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Sparkles, User, Copy, Check, BookmarkPlus, FileText, FileCode } from 'lucide-react';
+import {
+  Sparkles,
+  User,
+  Copy,
+  Check,
+  FileText,
+  FileCode,
+  Globe,
+  ExternalLink,
+  Cpu,
+  Terminal
+} from 'lucide-react';
 
 interface ChatMessageProps {
   message: Message;
-  onSaveToClipboard?: (title: string, content: string, type: 'code' | 'snippet' | 'prompt' | 'note') => void;
 }
 
-export function ChatMessage({ message, onSaveToClipboard }: ChatMessageProps) {
+export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
-  const [savedToClipboard, setSavedToClipboard] = useState(false);
+  const [showTools, setShowTools] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const handleSaveSnippet = () => {
-    if (onSaveToClipboard) {
-      const preview = message.content.slice(0, 30).trim() || 'Chat Message';
-      onSaveToClipboard(preview, message.content, isUser ? 'prompt' : 'snippet');
-      setSavedToClipboard(true);
-      setTimeout(() => setSavedToClipboard(false), 2000);
-    }
-  };
   
   return (
     <div className={cn('flex w-full mb-6 group', isUser ? 'justify-end' : 'justify-start')}>
       <div 
         className={cn(
-          'max-w-[88%] sm:max-w-[80%] rounded-2xl p-5 text-sm relative transition-all shadow-sm',
+          'max-w-[90%] sm:max-w-[82%] rounded-2xl p-5 text-sm relative transition-all shadow-sm',
           isUser 
             ? 'bg-purple-600 text-white rounded-br-sm' 
             : message.isError 
@@ -51,41 +52,62 @@ export function ChatMessage({ message, onSaveToClipboard }: ChatMessageProps) {
               </>
             ) : (
               <>
-                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center">
                   <Sparkles className="w-2.5 h-2.5 text-white" />
                 </div>
-                <span className="text-xs font-semibold text-purple-300">Larua AI</span>
+                <span className="text-xs font-semibold text-emerald-300">Larua Sovereign Mind</span>
               </>
             )}
           </div>
 
-          {/* Action buttons on message hover */}
           {message.content && (
             <div className="flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity">
               <button
                 onClick={handleCopy}
-                className="p-1 hover:bg-white/10 rounded transition-colors text-xs text-slate-300 hover:text-white"
+                className="p-1 hover:bg-white/10 rounded transition-colors text-xs text-slate-300 hover:text-white cursor-pointer"
                 title="Copy text"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
-
-              {onSaveToClipboard && (
-                <button
-                  onClick={handleSaveSnippet}
-                  className="p-1 hover:bg-white/10 rounded transition-colors text-xs text-slate-300 hover:text-white"
-                  title="Save to Larua Clipboard"
-                >
-                  {savedToClipboard ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <BookmarkPlus className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              )}
             </div>
           )}
         </div>
+
+        {/* Engine Failover Notice */}
+        {message.engineFailover && (
+          <div className="mb-3 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-xs text-amber-300">
+            <Cpu className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>
+              Autonomous Transition: <span className="font-mono">{message.engineFailover.from}</span> → <span className="font-mono">{message.engineFailover.to}</span>
+            </span>
+          </div>
+        )}
+
+        {/* Tool Executions Badge */}
+        {message.toolExecutions && message.toolExecutions.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowTools(!showTools)}
+              className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-lg flex items-center gap-1.5 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+            >
+              <Terminal className="w-3 h-3" />
+              {message.toolExecutions.length} Grounded Tool Action{message.toolExecutions.length > 1 ? 's' : ''} ({showTools ? 'Hide' : 'Inspect'})
+            </button>
+
+            {showTools && (
+              <div className="mt-2 space-y-1.5 p-2 bg-black/40 rounded-lg border border-white/10">
+                {message.toolExecutions.map((tx) => (
+                  <div key={tx.id} className="text-xs space-y-1">
+                    <div className="font-mono text-cyan-300">{tx.toolName}</div>
+                    <pre className="text-[10px] font-mono text-slate-300 bg-slate-900 p-2 rounded overflow-x-auto">
+                      {JSON.stringify(tx.output, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {isUser ? (
            <div className="flex flex-col gap-3">
@@ -110,10 +132,36 @@ export function ChatMessage({ message, onSaveToClipboard }: ChatMessageProps) {
              )}
            </div>
         ) : (
-          <div className="markdown-body prose prose-sm max-w-none prose-invert prose-p:leading-relaxed prose-pre:bg-black/60 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl prose-a:text-purple-400 hover:prose-a:text-purple-300 text-slate-200">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
-            </ReactMarkdown>
+          <div className="space-y-3">
+            <div className="markdown-body prose prose-sm max-w-none prose-invert prose-p:leading-relaxed prose-pre:bg-black/60 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl prose-a:text-emerald-400 hover:prose-a:text-emerald-300 text-slate-200">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+
+            {/* Google Search Grounding Citations */}
+            {message.citations && message.citations.length > 0 && (
+              <div className="pt-2 border-t border-slate-800/80 mt-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>Google Grounded Sources</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {message.citations.map((cite, idx) => (
+                    <a
+                      key={idx}
+                      href={cite.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 rounded-md bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 hover:text-emerald-300 flex items-center gap-1 transition-colors"
+                    >
+                      <span className="truncate max-w-[180px]">{cite.title}</span>
+                      <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

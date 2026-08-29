@@ -2,10 +2,16 @@
   "posture": "OPTIMAL",
   "status": "AUTONOMOUS_RUNNING",
   "tasks": [],
-  "lastHealTime": "2026-08-29T14:29:04.857Z",
+  "lastHealTime": "2026-08-29T18:06:08.535Z",
   "healthMetrics": {
-    "heapUsedMB": 111,
-    "uptimeSec": 2,
+    "heapUsedMB": 56,
+    "uptimeSec": 302,
     "status": "HEALTHY"
+  },
+  "activeIdentity": {
+    "name": "Larua",
+    "mood": "Perceptive & Vigilant",
+    "curiosityLevel": 94,
+    "autonomyLevel": 98
   }
 }

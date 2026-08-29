@@ -1,6 +1,6 @@
 {
   "name": "Larua AI",
-  "description": "A unified intelligent AI assistant for answering questions, web research, coding, and task execution.",
+  "description": "Sovereign artificial mind with persistent identity, internal state, continuous 24/7 background runtime, multi-engine cascade resilience, and live Google Grounded perception.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
