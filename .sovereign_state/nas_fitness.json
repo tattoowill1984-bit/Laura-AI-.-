@@ -1,0 +1,51 @@
+{
+  "gemini-3.1-flash-lite": {
+    "model": "gemini-3.1-flash-lite",
+    "successes": 23,
+    "fails": 12,
+    "avgLatencyMs": 11126,
+    "fitnessScore": 10
+  },
+  "gemini-3-flash-preview": {
+    "model": "gemini-3-flash-preview",
+    "successes": 12,
+    "fails": 13,
+    "avgLatencyMs": 8282,
+    "fitnessScore": 10
+  },
+  "gemini-3.1-pro-preview": {
+    "model": "gemini-3.1-pro-preview",
+    "successes": 5,
+    "fails": 10,
+    "avgLatencyMs": 1400,
+    "fitnessScore": 10
+  },
+  "gemini-3.7-flash": {
+    "model": "gemini-3.7-flash",
+    "successes": 4,
+    "fails": 5,
+    "avgLatencyMs": 1800,
+    "fitnessScore": 10
+  },
+  "gemini-2.5-flash": {
+    "model": "gemini-2.5-flash",
+    "successes": 0,
+    "fails": 6,
+    "avgLatencyMs": 1000,
+    "fitnessScore": 10
+  },
+  "gemini-2.5-pro": {
+    "model": "gemini-2.5-pro",
+    "successes": 0,
+    "fails": 6,
+    "avgLatencyMs": 1000,
+    "fitnessScore": 10
+  },
+  "gemini-3.6-flash": {
+    "model": "gemini-3.6-flash",
+    "successes": 6,
+    "fails": 3,
+    "avgLatencyMs": 7310,
+    "fitnessScore": 10
+  }
+}

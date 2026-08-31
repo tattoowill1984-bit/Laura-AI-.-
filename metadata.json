@@ -1,6 +1,6 @@
 {
   "name": "Larua AI",
-  "description": "Sovereign artificial mind with persistent identity, internal state, continuous 24/7 background runtime, multi-engine cascade resilience, and live Google Grounded perception.",
+  "description": "High-performance AI assistant with real-time Google Search grounding, multimodal file analysis, and multi-model reasoning.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

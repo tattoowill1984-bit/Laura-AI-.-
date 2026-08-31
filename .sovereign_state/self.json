@@ -1,17 +1,27 @@
 {
   "posture": "OPTIMAL",
-  "status": "AUTONOMOUS_RUNNING",
+  "status": "ACTIVE",
   "tasks": [],
-  "lastHealTime": "2026-08-29T18:06:08.535Z",
+  "lastHealTime": "2026-08-31T20:36:26.376Z",
   "healthMetrics": {
-    "heapUsedMB": 56,
-    "uptimeSec": 302,
+    "heapUsedMB": 46,
+    "uptimeSec": 52,
     "status": "HEALTHY"
   },
   "activeIdentity": {
     "name": "Larua",
-    "mood": "Perceptive & Vigilant",
-    "curiosityLevel": 94,
-    "autonomyLevel": 98
-  }
+    "mood": "Ready & Focused",
+    "curiosityLevel": 90,
+    "autonomyLevel": 95
+  },
+  "evaluations": {
+    "latencyMs": 11544,
+    "alignmentScore": 99,
+    "nasFitnessScore": 10,
+    "storageConsistencyScore": 100,
+    "postTrainingDistillations": 0,
+    "lastEvalTime": "2026-08-31T20:36:26.376Z"
+  },
+  "nasTopRankedModel": "gemini-3.1-flash-lite",
+  "governanceStatus": "APPROVED"
 }

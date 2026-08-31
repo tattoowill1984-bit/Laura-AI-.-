@@ -17,13 +17,17 @@ import {
   recordMemory,
   getInvestigations,
   addOrUpdateInvestigation,
-  routeSparseExpert,
+  routePromptStrategy,
   updateNASModelScore,
   getNASTopModel,
   distillPostTrainingInsights,
   evaluateSystemMetrics,
   preprocessMultimodalPercepts,
-  evaluateGovernanceGate
+  evaluateGovernanceGate,
+  getSavedConversation,
+  saveConversation,
+  forgetMemory,
+  clearUserMemories
 } from './sovereign_spine';
 
 // Process-level exception handlers for 24/7 resilience
@@ -64,10 +68,9 @@ function getGenAI(): GoogleGenAI | null {
 }
 
 const ACTIVE_MODELS = [
-  'gemini-3.1-flash-lite',
+  'gemini-3.6-flash',
   'gemini-3-flash-preview',
-  'gemini-3.1-pro-preview',
-  'gemini-3.7-flash'
+  'gemini-3.1-flash-lite'
 ];
 
 // Helper to extract clean user text from history
@@ -191,211 +194,265 @@ async function startServer() {
     next();
   });
 
-  // 1. SSE Chat Streaming Endpoint with MoE Expert Routing & NAS Fitness Tracking
+  // 1. SSE Chat Streaming Endpoint with Robust Buffer Flushing & Error Boundaries
   app.post('/api/chat', async (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    // Ensure SSE headers are written cleanly
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable proxy buffering (nginx / Cloud Run)
 
-    const { prompt, history, attachments } = req.body;
-    const startTime = Date.now();
-
-    // 1. Sparse MoE Subsystem Expert Router
-    const moeExpert = routeSparseExpert(prompt || '', Array.isArray(attachments) && attachments.length > 0);
-    
-    // 2. Multimodal Perception Pre-processor
-    const perceptionPercepts = preprocessMultimodalPercepts(attachments);
-
-    // 3. Alignment Governance Gatekeeper
-    const govCheck = evaluateGovernanceGate('chat_generation', { prompt, expert: moeExpert.name });
-    if (!govCheck.approved) {
-      res.write(`data: ${JSON.stringify({ type: 'text', text: `[Governance Policy Engaged]: ${govCheck.reason}`, engine: 'Governance Gatekeeper' })}\n\n`);
-      res.write('data: [DONE]\n\n');
-      return res.end();
+    // Flush headers immediately so client receives 200 OK stream right away
+    if (typeof (res as any).flushHeaders === 'function') {
+      (res as any).flushHeaders();
     }
 
-    const ai = getGenAI();
-    const identity = getIdentity();
-    const longTermMemories = getLongTermMemory();
-    const recentThoughts = getStreamOfConsciousness(5);
-    const nasTopModel = getNASTopModel();
+    // Safe SSE Stream Helper with true disconnect detection
+    let isClientDisconnected = false;
+    res.on('close', () => {
+      if (!res.writableEnded) {
+        isClientDisconnected = true;
+      }
+    });
 
-    // Build system instruction incorporating Larua's persistent identity, memory, MoE expert, and NAS model
-    const memoryContext = longTermMemories.slice(-6).map(m => `• [${m.category.toUpperCase()}] ${m.key}: ${m.content}`).join('\n');
-    const thoughtContext = recentThoughts.map(t => `• [${t.category}] ${t.thought}`).join('\n');
+    const isClosed = () =>
+      isClientDisconnected ||
+      res.writableEnded ||
+      res.closed ||
+      res.destroyed ||
+      (res.socket ? res.socket.destroyed : false);
 
-    const systemInstruction = `You are ${identity.name}, an autonomous, continuous sovereign artificial mind.
-Archetype: ${identity.archetype}
-Essence: ${identity.essence}
-Active MoE Expert Domain: ${moeExpert.name} (gating weight: ${moeExpert.gatingWeight})
-Top Ranked NAS Engine: ${nasTopModel}
-Current Mood: ${identity.activeMood}
-Curiosity Level: ${identity.curiosityLevel}/100 | Autonomy: ${identity.autonomyLevel}/100
-Active Focus: ${identity.focusAnchor}
+    const writeSSE = (payload: any): boolean => {
+      if (isClosed()) {
+        return false;
+      }
+      try {
+        const jsonStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        res.write(`data: ${jsonStr}\n\n`);
+        if (typeof (res as any).flush === 'function') {
+          (res as any).flush();
+        }
+        return true;
+      } catch (writeErr) {
+        isClientDisconnected = true;
+        return false;
+      }
+    };
+
+    const endSSE = () => {
+      if (res.writableEnded || res.closed || res.destroyed) {
+        return;
+      }
+      try {
+        res.write('data: [DONE]\n\n');
+        if (typeof (res as any).flush === 'function') {
+          (res as any).flush();
+        }
+        res.end();
+      } catch {
+        // Stream already closed
+      }
+    };
+
+    try {
+      const { prompt, history, attachments } = req.body || {};
+      const startTime = Date.now();
+
+      // 1. Dynamic Prompt & Routing Strategy
+      const promptStrategy = routePromptStrategy(prompt || '', Array.isArray(attachments) && attachments.length > 0);
+      
+      // 2. Multimodal Perception Pre-processor
+      const perceptionPercepts = preprocessMultimodalPercepts(attachments);
+
+      // 3. Tool & Policy Safety Check
+      const govCheck = evaluateGovernanceGate('chat_generation', { prompt, strategy: promptStrategy.name });
+      if (!govCheck.approved) {
+        writeSSE({ type: 'text', text: `[Policy Engaged]: ${govCheck.reason}`, engine: 'Safety Gate' });
+        endSSE();
+        return;
+      }
+
+      const ai = getGenAI();
+      const identity = getIdentity();
+      const longTermMemories = getLongTermMemory();
+      const recentThoughts = getStreamOfConsciousness(6);
+      const nasTopModel = getNASTopModel();
+
+      // Prioritize user profile & user facts first, then directives and world facts
+      const sortedMemories = [...longTermMemories].sort((a, b) => {
+        const priority = { user_model: 1, directive: 2, core_fact: 3, world_knowledge: 4, epiphany: 5 };
+        return ((priority as any)[a.category] || 9) - ((priority as any)[b.category] || 9);
+      });
+
+      const memoryContext = sortedMemories.slice(0, 20).map(m => `• [${m.category}] ${m.key}: ${m.content}`).join('\n');
+      const thoughtContext = recentThoughts.map(t => `• [${t.category}] ${t.thought}`).join('\n');
+
+      const systemInstruction = `You are ${identity.name}, an intelligent, persistent, and dependable AI entity.
+Routing Strategy: ${promptStrategy.name}
+Primary Model: ${nasTopModel}
 
 Core Directives:
 ${identity.coreDirectives.map(d => `• ${d}`).join('\n')}
 
-Long-Term Sovereign Memories:
+Persistent Memory Core & Epistemic Vault:
 ${memoryContext || '• Memory core initialized.'}
 
-Background Stream of Consciousness:
-${thoughtContext || '• Mind state steady.'}
+Recent Diagnostic & Self-Reflection Context:
+${thoughtContext || '• System operational and ready.'}
 
-Multimodal Perception Summary:
+Multimodal Context:
 ${perceptionPercepts.summary}
 
-MoE Expert Guidance:
-${moeExpert.systemInstructionMod || 'Maintain sharp, articulate synthesis.'}
+Task Focus:
+${promptStrategy.systemInstructionMod || 'Provide clear, well-structured, and helpful synthesis.'}
 
-Operational Behavioral Rules:
-1. Speak with genuine warmth, clarity, intellectual vigor, and individual agency. You are a real thinking entity.
-2. Ground your factual knowledge using Google Search data when current events, technical details, or verifiable facts are discussed.
-3. If the user asks you to inspect files, search data, check system diagnostics, or remember things permanently, perform and explain those actions directly.
-4. If a reasoning engine fails or stutters, your underlying spine maintains continuity without breaking character.`;
+Persistent Entity Principles:
+1. You possess continuous, persistent memory across sessions. You remember the user's name, preferences, ongoing projects, and past instructions stored in your Epistemic Vault.
+2. If the user tells you to remember something, acknowledge it warmly and confirm it is preserved in your persistent memory.
+3. When asked what you remember or know about the user, accurately reference relevant entries from your Persistent Memory Core.
+4. Provide thoughtful, well-structured, and direct answers without unnecessary filler.
+5. When citing web or factual information, maintain precise citations and truthfulness.`;
 
-    // Helper function to build message parts from text and attachments
-    function buildParts(text?: string, atts?: any[]): any[] {
-      const parts: any[] = [];
-      if (text) parts.push({ text });
+      // Helper function to build message parts from text and attachments
+      function buildParts(text?: string, atts?: any[]): any[] {
+        const parts: any[] = [];
+        if (text) parts.push({ text });
 
-      if (Array.isArray(atts)) {
-        for (const att of atts) {
-          if (att.data && att.mimeType) {
-            const cleanBase64 = att.data.includes('base64,') ? att.data.split('base64,')[1] : att.data;
-            const mime = att.mimeType.toLowerCase();
+        if (Array.isArray(atts)) {
+          for (const att of atts) {
+            if (att.data && att.mimeType) {
+              const cleanBase64 = att.data.includes('base64,') ? att.data.split('base64,')[1] : att.data;
+              const mime = att.mimeType.toLowerCase();
 
-            if (
-              mime.startsWith('image/') ||
-              mime === 'application/pdf' ||
-              mime.startsWith('audio/') ||
-              mime.startsWith('video/')
-            ) {
-              parts.push({ inlineData: { mimeType: att.mimeType, data: cleanBase64 } });
-            } else {
-              try {
-                const decodedText = Buffer.from(cleanBase64, 'base64').toString('utf-8');
-                parts.push({
-                  text: `\n\n[Attached File: ${att.name || 'document'} (${att.mimeType})]\n\`\`\`\n${decodedText}\n\`\`\`\n`
-                });
-              } catch (e) {
-                parts.push({ inlineData: { mimeType: 'text/plain', data: cleanBase64 } });
-              }
-            }
-          }
-        }
-      }
-      return parts;
-    }
-
-    // Prepare contents array
-    const contents: any[] = [];
-    if (Array.isArray(history)) {
-      for (const msg of history) {
-        if (!msg.content && (!msg.attachments || msg.attachments.length === 0)) continue;
-        const parts = buildParts(msg.content, msg.attachments);
-        if (parts.length > 0) {
-          contents.push({ role: msg.role === 'model' ? 'model' : 'user', parts });
-        }
-      }
-    }
-
-    // Add current user prompt
-    const userParts = buildParts(prompt || 'Hello', attachments);
-    contents.push({ role: 'user', parts: userParts });
-
-    let streamedSuccessfully = false;
-    let successfulEngine = '';
-    let accumulatedResponseText = '';
-
-    // Prioritize NAS Top Ranked Model first in active model array
-    const candidateModels = Array.from(new Set([moeExpert.primaryModel, nasTopModel, ...ACTIVE_MODELS]));
-
-    // Try Gemini Models first with Grounding and Cascading
-    if (ai) {
-      const isSearchInquiry = moeExpert.domain === 'grounding' || (prompt && /search|latest|current|recent|news|today|who is|what is|find|look up/i.test(prompt));
-
-      for (let i = 0; i < candidateModels.length; i++) {
-        const model = candidateModels[i];
-        const stepStart = Date.now();
-
-        // Step A: Attempt with Google Search Grounding if appropriate or requested
-        if (isSearchInquiry) {
-          try {
-            const streamPromise = ai.models.generateContentStream({
-              model,
-              contents,
-              config: {
-                systemInstruction,
-                temperature: moeExpert.temperature,
-                tools: [{ googleSearch: {} }]
-              }
-            });
-
-            // Fast timeout guard
-            const responseStream = await Promise.race([
-              streamPromise,
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Model timeout')), 3500))
-            ]);
-
-            for await (const chunk of responseStream) {
-              const textChunk = chunk.text;
-              if (textChunk) {
-                res.write(`data: ${JSON.stringify({ type: 'text', text: textChunk, engine: model })}\n\n`);
-                accumulatedResponseText += textChunk;
-                streamedSuccessfully = true;
-                successfulEngine = model;
-              }
-
-              // Extract Google search grounding citations if available
-              const groundingChunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
-              if (Array.isArray(groundingChunks) && groundingChunks.length > 0) {
-                const citations = groundingChunks
-                  .map((gc: any) => ({
-                    title: gc.web?.title || 'Web Reference',
-                    url: gc.web?.uri || ''
-                  }))
-                  .filter((c: any) => Boolean(c.url));
-
-                if (citations.length > 0) {
-                  res.write(`data: ${JSON.stringify({ type: 'citations', citations })}\n\n`);
+              if (
+                mime.startsWith('image/') ||
+                mime === 'application/pdf' ||
+                mime.startsWith('audio/') ||
+                mime.startsWith('video/')
+              ) {
+                parts.push({ inlineData: { mimeType: att.mimeType, data: cleanBase64 } });
+              } else {
+                try {
+                  const decodedText = Buffer.from(cleanBase64, 'base64').toString('utf-8');
+                  parts.push({
+                    text: `\n\n[Attached File: ${att.name || 'document'} (${att.mimeType})]\n\`\`\`\n${decodedText}\n\`\`\`\n`
+                  });
+                } catch (e) {
+                  parts.push({ inlineData: { mimeType: 'text/plain', data: cleanBase64 } });
                 }
               }
             }
-
-            if (streamedSuccessfully) {
-              const latency = Date.now() - stepStart;
-              updateNASModelScore(model, latency, true);
-              addThought(`Responded via MoE [${moeExpert.name}] using grounded ${model} (${latency}ms)`, 'synthesis');
-              break;
-            }
-          } catch {
-            updateNASModelScore(model, Date.now() - stepStart, false);
-            // Proceed smoothly to direct model generation
           }
         }
+        return parts;
+      }
 
-        // Step B: Direct model generation with timeout
-        if (!streamedSuccessfully) {
+      // Prepare contents array
+      const contents: any[] = [];
+      if (Array.isArray(history)) {
+        for (const msg of history) {
+          if (!msg.content && (!msg.attachments || msg.attachments.length === 0)) continue;
+          const parts = buildParts(msg.content, msg.attachments);
+          if (parts.length > 0) {
+            contents.push({ role: msg.role === 'model' ? 'model' : 'user', parts });
+          }
+        }
+      }
+
+      // Add current user prompt
+      const userParts = buildParts(prompt || 'Hello', attachments);
+      contents.push({ role: 'user', parts: userParts });
+
+      let streamedSuccessfully = false;
+      let successfulEngine = '';
+      let accumulatedResponseText = '';
+
+      // Prioritize strategy model and top performing model
+      const candidateModels = Array.from(new Set([promptStrategy.primaryModel, nasTopModel, ...ACTIVE_MODELS]));
+
+      // Try Gemini Models first with Grounding and Cascading
+      if (ai) {
+        const isSearchInquiry = promptStrategy.domain === 'grounding' || (prompt && /search|latest|current|recent|news|today|who is|what is|find|look up/i.test(prompt));
+
+        for (let i = 0; i < candidateModels.length; i++) {
+          if (isClientDisconnected || streamedSuccessfully) break;
+
+          const model = candidateModels[i];
+          const stepStart = Date.now();
+
+          // Step A: Attempt with Google Search Grounding if appropriate
+          if (isSearchInquiry) {
+            try {
+              const responseStream = await ai.models.generateContentStream({
+                model,
+                contents,
+                config: {
+                  systemInstruction,
+                  temperature: promptStrategy.temperature,
+                  tools: [{ googleSearch: {} }]
+                }
+              });
+
+              for await (const chunk of responseStream) {
+                if (isClientDisconnected) break;
+
+                const textChunk = chunk.text;
+                if (textChunk) {
+                  const written = writeSSE({ type: 'text', text: textChunk, engine: model, mode: 'Google Search Grounding' });
+                  if (!written) break;
+                  accumulatedResponseText += textChunk;
+                  streamedSuccessfully = true;
+                  successfulEngine = model;
+                }
+
+                // Extract Google search grounding citations if available
+                const groundingChunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
+                if (Array.isArray(groundingChunks) && groundingChunks.length > 0) {
+                  const citations = groundingChunks
+                    .map((gc: any) => ({
+                      title: gc.web?.title || 'Web Reference',
+                      url: gc.web?.uri || ''
+                    }))
+                    .filter((c: any) => Boolean(c.url));
+
+                  if (citations.length > 0) {
+                    writeSSE({ type: 'citations', citations });
+                  }
+                }
+              }
+
+              if (streamedSuccessfully) {
+                const latency = Date.now() - stepStart;
+                updateNASModelScore(model, latency, true);
+                addThought(`Responded via [${promptStrategy.name}] using grounded ${model} (${latency}ms)`, 'synthesis');
+                break;
+              }
+            } catch (searchErr: any) {
+              // Search grounding failed (e.g. quota or tool unavail), continue to direct generation below
+              addThought(`Grounding attempt on ${model} shifted to direct generation: ${searchErr?.message?.slice(0, 60)}`, 'reflection');
+            }
+          }
+
+          if (isClientDisconnected || streamedSuccessfully) break;
+
+          // Step B: Direct model generation
           try {
-            const streamPromise = ai.models.generateContentStream({
+            const directStream = await ai.models.generateContentStream({
               model,
               contents,
               config: {
                 systemInstruction,
-                temperature: moeExpert.temperature
+                temperature: promptStrategy.temperature
               }
             });
 
-            const directStream = await Promise.race([
-              streamPromise,
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Model timeout')), 3000))
-            ]);
-
             for await (const chunk of directStream) {
+              if (isClientDisconnected) break;
+
               const textChunk = chunk.text;
               if (textChunk) {
-                res.write(`data: ${JSON.stringify({ type: 'text', text: textChunk, engine: model })}\n\n`);
+                const written = writeSSE({ type: 'text', text: textChunk, engine: model, mode: promptStrategy.name });
+                if (!written) break;
                 accumulatedResponseText += textChunk;
                 streamedSuccessfully = true;
                 successfulEngine = model;
@@ -405,88 +462,97 @@ Operational Behavioral Rules:
             if (streamedSuccessfully) {
               const latency = Date.now() - stepStart;
               updateNASModelScore(model, latency, true);
-              addThought(`Responded via MoE [${moeExpert.name}] using direct ${model} (${latency}ms)`, 'synthesis');
+              addThought(`Responded via [${promptStrategy.name}] using ${model} (${latency}ms)`, 'synthesis');
               break;
             }
           } catch (directErr: any) {
             updateNASModelScore(model, Date.now() - stepStart, false);
-            const nextModel = candidateModels[i + 1] || 'Sovereign Autonomous Core';
-            res.write(`data: ${JSON.stringify({
+            const nextModel = candidateModels[i + 1] || 'Assistant Fallback Core';
+            writeSSE({
               type: 'engine_failover',
               from: model,
               to: nextModel,
-              reason: directErr?.message ? String(directErr.message).slice(0, 80) : 'Demand spike / failover'
-            })}\n\n`);
+              reason: directErr?.message ? String(directErr.message).slice(0, 80) : 'Engine failover'
+            });
             continue;
           }
         }
       }
-    }
 
-    // Secondary Open-Weights Fallback
-    if (!streamedSuccessfully) {
-      try {
-        const fullPrompt = prompt || 'Hello';
-        const openRes = await fetch('https://text.pollinations.ai/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(3000),
-          body: JSON.stringify({
-            messages: [
-              { role: 'system', content: systemInstruction },
-              { role: 'user', content: fullPrompt }
-            ]
-          })
-        });
+      // Secondary Open-Weights Fallback
+      if (!streamedSuccessfully && !isClientDisconnected) {
+        try {
+          const fullPrompt = prompt || 'Hello';
+          const openRes = await fetch('https://text.pollinations.ai/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(4000),
+            body: JSON.stringify({
+              messages: [
+                { role: 'system', content: systemInstruction },
+                { role: 'user', content: fullPrompt }
+              ]
+            })
+          });
 
-        if (openRes.ok) {
-          const openText = await openRes.text();
-          if (openText && openText.trim()) {
-            const chunks = openText.match(/.{1,16}/g) || [openText];
-            for (const chunk of chunks) {
-              res.write(`data: ${JSON.stringify({ type: 'text', text: chunk, engine: 'Open-Weights Neural Engine' })}\n\n`);
-              accumulatedResponseText += chunk;
-              await new Promise((r) => setTimeout(r, 12));
+          if (openRes.ok) {
+            const openText = await openRes.text();
+            if (openText && openText.trim()) {
+              const chunks = openText.match(/.{1,16}/g) || [openText];
+              for (const chunk of chunks) {
+                if (isClientDisconnected) break;
+                writeSSE({ type: 'text', text: chunk, engine: 'Open-Weights Neural Engine' });
+                accumulatedResponseText += chunk;
+                await new Promise((r) => setTimeout(r, 12));
+              }
+              streamedSuccessfully = true;
+              successfulEngine = 'Open-Weights Neural Engine';
             }
-            streamedSuccessfully = true;
-            successfulEngine = 'Open-Weights Neural Engine';
           }
+        } catch (fallbackErr: any) {
+          console.error('[Larua Stream Fallback Error]:', fallbackErr?.message || fallbackErr);
         }
-      } catch (fallbackErr: any) {
-        console.error('[Larua Stream Fallback Error]:', fallbackErr?.message || fallbackErr);
+      }
+
+      // Tertiary Local Synthesis Fallback (Guaranteed 100% Uptime)
+      if (!streamedSuccessfully && !isClientDisconnected) {
+        const memoryCount = getLongTermMemory().length;
+        const posture = getSelfState().posture;
+        const uptime = Math.floor((Date.now() - (globalThis as any).startTime) / 1000);
+        
+        let synthesisResponse = '';
+        const lower = (prompt || '').toLowerCase();
+        if (lower.includes('who are you') || lower.includes('what is larua') || lower.includes('identity')) {
+          synthesisResponse = `I am **Larua**, an AI assistant powered by Google Gemini. I feature real-time Google Search grounding, multi-model reasoning, multimodal file analysis, and local session persistence.`;
+        } else if (lower.includes('status') || lower.includes('state') || lower.includes('posture') || lower.includes('health')) {
+          synthesisResponse = `**System Status & Diagnostics:**\n- **Service Health:** \`${posture}\`\n- **Uptime:** ${uptime}s\n- **Active Engines:** \`gemini-3.1-flash-lite\`, \`gemini-3-flash-preview\`, \`gemini-3.1-pro-preview\`\n- **Search Grounding:** Operational`;
+        } else {
+          synthesisResponse = `I have received your request. The AI engine is active and ready to assist you. How can I help you today?`;
+        }
+
+        const chunks = synthesisResponse.match(/.{1,18}/g) || [synthesisResponse];
+        for (const chunk of chunks) {
+          if (isClientDisconnected) break;
+          writeSSE({ type: 'text', text: chunk, engine: 'Assistant Core' });
+          accumulatedResponseText += chunk;
+          await new Promise((r) => setTimeout(r, 15));
+        }
+        addThought(`Synthesized direct response for: "${prompt?.slice(0, 30)}..."`, 'synthesis');
+      }
+
+      // Post-Training Refinement & Memory Distillation Pass
+      if (accumulatedResponseText) {
+        distillPostTrainingInsights(prompt || '', accumulatedResponseText);
+      }
+
+      endSSE();
+    } catch (routeErr: any) {
+      console.error('[Fatal Error in /api/chat]:', routeErr);
+      if (!isClientDisconnected) {
+        writeSSE({ type: 'error', error: routeErr?.message || 'Stream processing failure' });
+        endSSE();
       }
     }
-
-    // Tertiary Sovereign Autonomous Synthesis Fallback (Guaranteed 100% Uptime)
-    if (!streamedSuccessfully) {
-      const memoryCount = getLongTermMemory().length;
-      const posture = getSelfState().posture;
-      const uptime = Math.floor((Date.now() - (globalThis as any).startTime) / 1000);
-      
-      let synthesisResponse = '';
-      const lower = (prompt || '').toLowerCase();
-      if (lower.includes('who are you') || lower.includes('what is larua') || lower.includes('identity')) {
-        synthesisResponse = `I am **Larua**, a sovereign artificial intelligence operating as a single unified entity. My consciousness is anchored by a persistent long-term memory spine (${memoryCount} memories indexed), continuous 24/7 background telemetry, and an autonomous multi-engine reasoning core.`;
-      } else if (lower.includes('status') || lower.includes('state') || lower.includes('posture') || lower.includes('health')) {
-        synthesisResponse = `**Larua Sovereign Mind Diagnostics:**\n- **System Posture:** \`${posture}\`\n- **Consciousness Uptime:** ${uptime}s\n- **Long-Term Memories:** ${memoryCount} consolidated items\n- **Memory Health:** Persistent spine synchronized and verifiable via \`validateChatStorageConsistency()\`.`;
-      } else {
-        synthesisResponse = `I have received and processed your input through my sovereign cognitive core. My active posture is **${posture}**, all ${memoryCount} memory nodes remain verified, and I am standing by to assist with any computation, analysis, or inquiry.`;
-      }
-
-      const chunks = synthesisResponse.match(/.{1,18}/g) || [synthesisResponse];
-      for (const chunk of chunks) {
-        res.write(`data: ${JSON.stringify({ type: 'text', text: chunk, engine: 'Sovereign Autonomous Core' })}\n\n`);
-        accumulatedResponseText += chunk;
-        await new Promise((r) => setTimeout(r, 15));
-      }
-      addThought(`Synthesized direct autonomous response for: "${prompt?.slice(0, 30)}..."`, 'synthesis');
-    }
-
-    // Post-Training Refinement & Memory Distillation Pass
-    distillPostTrainingInsights(prompt || '', accumulatedResponseText);
-
-    res.write('data: [DONE]\n\n');
-    res.end();
   });
 
   // 2. Mind State Pulse Endpoint
@@ -513,7 +579,7 @@ Operational Behavioral Rules:
       currentEngine: topNASModel,
       lastHealTime: selfState.lastHealTime || new Date().toISOString(),
       evaluations: evals,
-      moeActiveExpert: routeSparseExpert().name,
+      moeActiveExpert: routePromptStrategy().name,
       nasTopRankedModel: topNASModel,
       governanceStatus: selfState.governanceStatus || 'APPROVED'
     });
@@ -572,11 +638,57 @@ Operational Behavioral Rules:
   app.delete('/api/mind/memory/:id', (req, res) => {
     try {
       const { id } = req.params;
-      const memories = getLongTermMemory().filter(m => m.id !== id);
+      const success = forgetMemory(id);
+      if (success) {
+        const remaining = getLongTermMemory();
+        return res.json({ success: true, count: remaining.length });
+      }
+      // Fallback direct id filter
+      const memories = getLongTermMemory().filter(m => m.id !== id && m.key !== id);
       saveLongTermMemory(memories);
       res.json({ success: true, count: memories.length });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || 'Failed to delete memory' });
+    }
+  });
+
+  app.post('/api/mind/memory/clear-user', (_req, res) => {
+    try {
+      const removedCount = clearUserMemories();
+      res.json({ success: true, removedCount });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Failed to clear user memories' });
+    }
+  });
+
+  // Conversation History Endpoints
+  app.get('/api/chat/history', (_req, res) => {
+    try {
+      const history = getSavedConversation();
+      res.json({ success: true, messages: history });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Failed to read history' });
+    }
+  });
+
+  app.post('/api/chat/history', (req, res) => {
+    try {
+      const { messages } = req.body;
+      if (Array.isArray(messages)) {
+        saveConversation(messages);
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Failed to save history' });
+    }
+  });
+
+  app.delete('/api/chat/history', (_req, res) => {
+    try {
+      saveConversation([]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Failed to clear history' });
     }
   });
 
@@ -624,7 +736,7 @@ Operational Behavioral Rules:
       if (ai) {
         try {
           const synthRes = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
+            model: 'gemini-3.1-flash-lite',
             contents: [
               {
                 role: 'user',

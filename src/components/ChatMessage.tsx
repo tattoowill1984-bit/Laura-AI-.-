@@ -13,7 +13,7 @@ import {
   Globe,
   ExternalLink,
   Cpu,
-  Terminal
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface ChatMessageProps {
@@ -23,7 +23,6 @@ interface ChatMessageProps {
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
-  const [showTools, setShowTools] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -52,10 +51,20 @@ export function ChatMessage({ message }: ChatMessageProps) {
               </>
             ) : (
               <>
-                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center">
+                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center">
                   <Sparkles className="w-2.5 h-2.5 text-white" />
                 </div>
-                <span className="text-xs font-semibold text-emerald-300">Larua Sovereign Mind</span>
+                <span className="text-xs font-semibold text-purple-300">Larua</span>
+                {message.engine && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-white/5 border border-white/10 text-slate-400">
+                    {message.engine}
+                  </span>
+                )}
+                {message.mode && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300">
+                    {message.mode}
+                  </span>
+                )}
               </>
             )}
           </div>
@@ -73,39 +82,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
           )}
         </div>
 
-        {/* Engine Failover Notice */}
+        {/* Failover Notice */}
         {message.engineFailover && (
           <div className="mb-3 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-xs text-amber-300">
             <Cpu className="w-3.5 h-3.5 flex-shrink-0" />
             <span>
-              Autonomous Transition: <span className="font-mono">{message.engineFailover.from}</span> → <span className="font-mono">{message.engineFailover.to}</span>
+              Engine Failover: <span className="font-mono">{message.engineFailover.from}</span> → <span className="font-mono">{message.engineFailover.to}</span>
             </span>
-          </div>
-        )}
-
-        {/* Tool Executions Badge */}
-        {message.toolExecutions && message.toolExecutions.length > 0 && (
-          <div className="mb-3">
-            <button
-              onClick={() => setShowTools(!showTools)}
-              className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-lg flex items-center gap-1.5 hover:bg-emerald-500/20 transition-colors cursor-pointer"
-            >
-              <Terminal className="w-3 h-3" />
-              {message.toolExecutions.length} Grounded Tool Action{message.toolExecutions.length > 1 ? 's' : ''} ({showTools ? 'Hide' : 'Inspect'})
-            </button>
-
-            {showTools && (
-              <div className="mt-2 space-y-1.5 p-2 bg-black/40 rounded-lg border border-white/10">
-                {message.toolExecutions.map((tx) => (
-                  <div key={tx.id} className="text-xs space-y-1">
-                    <div className="font-mono text-cyan-300">{tx.toolName}</div>
-                    <pre className="text-[10px] font-mono text-slate-300 bg-slate-900 p-2 rounded overflow-x-auto">
-                      {JSON.stringify(tx.output, null, 2)}
-                    </pre>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -115,8 +98,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
              {message.attachments && message.attachments.length > 0 && (
                <div className="flex flex-wrap gap-2 mt-2">
                  {message.attachments.map((att, i) => (
-                   att.mimeType.startsWith('image/') ? (
+                   att.mimeType.startsWith('image/') && att.data ? (
                      <img key={i} src={`data:${att.mimeType};base64,${att.data}`} className="max-w-[220px] max-h-[220px] object-cover rounded-lg border border-white/20 shadow-md" alt="attachment" />
+                   ) : att.mimeType.startsWith('image/') ? (
+                     <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 border border-white/20 rounded-lg text-xs text-purple-200">
+                       <ImageIcon className="w-4 h-4 text-pink-300 shrink-0" />
+                       <span className="truncate max-w-[180px] font-medium text-white">{att.name || 'Image Attachment'}</span>
+                     </div>
                    ) : (
                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 border border-white/20 rounded-lg text-xs text-purple-200">
                        {att.mimeType.includes('code') || att.mimeType.includes('json') || (att.name && att.name.match(/\.(ts|tsx|js|jsx|py|json|html|css)$/i)) ? (
@@ -133,7 +121,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
            </div>
         ) : (
           <div className="space-y-3">
-            <div className="markdown-body prose prose-sm max-w-none prose-invert prose-p:leading-relaxed prose-pre:bg-black/60 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl prose-a:text-emerald-400 hover:prose-a:text-emerald-300 text-slate-200">
+            <div className="markdown-body prose prose-sm max-w-none prose-invert prose-p:leading-relaxed prose-pre:bg-black/60 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl prose-a:text-purple-400 hover:prose-a:text-purple-300 text-slate-200">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {message.content}
               </ReactMarkdown>
@@ -142,7 +130,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             {/* Google Search Grounding Citations */}
             {message.citations && message.citations.length > 0 && (
               <div className="pt-2 border-t border-slate-800/80 mt-3 space-y-1.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-400">
                   <Globe className="w-3.5 h-3.5" />
                   <span>Google Grounded Sources</span>
                 </div>
@@ -153,7 +141,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                       href={cite.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-2.5 py-1 rounded-md bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 hover:text-emerald-300 flex items-center gap-1 transition-colors"
+                      className="px-2.5 py-1 rounded-md bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 hover:text-purple-300 flex items-center gap-1 transition-colors"
                     >
                       <span className="truncate max-w-[180px]">{cite.title}</span>
                       <ExternalLink className="w-2.5 h-2.5 opacity-60" />

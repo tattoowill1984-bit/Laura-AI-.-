@@ -32,6 +32,8 @@ export interface Message {
   role: 'user' | 'model';
   content: string;
   isError?: boolean;
+  engine?: string;
+  mode?: string;
   attachments?: MessageAttachment[];
   toolExecutions?: ToolExecutionRecord[];
   citations?: SearchCitation[];
